@@ -1,0 +1,5 @@
+qbdou 0
+rayen 0
+rayen 50
+rqyen 10
+rayen 0

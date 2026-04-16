@@ -1,43 +1,60 @@
-# Makefile – PuzzleQuest
+# ============================================================
+# Makefile  –  PuzzleQuest
+# Auteur : [Votre nom]
+#
+# Utilisation :
+#   make        → compile le projet
+#   make GEN    → compile (alias demande par le prof)
+#   make clean  → supprime les fichiers generes
+#   make run    → compile et lance le jeu
+# ============================================================
+
+# Compilateur et options
 CC      = gcc
-CFLAGS  = -Wall -Wextra -std=c11 -Iinclude \
-          $(shell sdl2-config --cflags)
+CFLAGS  = -Wall -Wextra -std=c99
 
-SDL_LIBS = $(shell sdl2-config --libs)
-LDFLAGS  = $(SDL_LIBS) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lm
+# Bibliotheques SDL2 necessaires
+LIBS    = -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lm
 
-TARGET  = puzzlequest
+# Nom de l'executable final
+PROG    = puzzlequest
 
-SRCS    = main.c \
-          src/init.c \
-          src/assets.c \
-          src/button.c \
-          src/render.c \
-          src/music.c \
-          src/menu_main.c \
-          src/menu_options.c \
-          src/menu_saveload.c \
-          src/menu_player.c \
-          src/menu_scores.c \
-          src/menu_enigma.c \
-          src/quiz.c \
-          src/puzzle.c
+# Fichiers sources (.c)
+SOURCES = main.c jeu.c
 
-OBJS    = $(SRCS:.c=.o)
+# Fichiers objets (.o) generes automatiquement
+OBJETS  = $(SOURCES:.c=.o)
 
-.PHONY: all clean run
+# ============================================================
+# Regle principale : compiler tout le projet
+# ============================================================
+all: $(PROG)
 
-all: $(TARGET)
+# Cible GEN demandee par le professeur (identique a all)
+GEN: $(PROG)
 
-$(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $@ $(LDFLAGS)
-	@echo "Build OK → ./$(TARGET)"
+# Lier les fichiers objets pour creer l'executable
+$(PROG): $(OBJETS)
+	$(CC) $(OBJETS) -o $(PROG) $(LIBS)
+	@echo "Compilation reussie ! Lancez : ./$(PROG)"
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+# Compiler chaque fichier .c en .o
+main.o: main.c jeu.h
+	$(CC) $(CFLAGS) -c main.c -o main.o
 
+jeu.o: jeu.c jeu.h
+	$(CC) $(CFLAGS) -c jeu.c -o jeu.o
+
+# ============================================================
+# Nettoyer les fichiers generes
+# ============================================================
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJETS) $(PROG)
+	@echo "Nettoyage termine."
 
-run: all
-	./$(TARGET)
+# Compiler et lancer directement
+run: GEN
+	./$(PROG)
+
+# Indiquer que ces cibles ne sont pas des fichiers
+.PHONY: all GEN clean run

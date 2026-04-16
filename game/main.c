@@ -1,125 +1,63 @@
-/*
- * main.c – PuzzleQuest entry point
- * Compilation: see Makefile
- */
-#include "include/game.h"
-#include "include/render_extra.h"
+/* ============================================================
+   main.c  –  Point d'entree du programme PuzzleQuest
+   Auteur  : [Votre nom]
 
-/* ── State-enter dispatcher ──────────────────────────────────── */
-static void enter_state(Game *g, GameState new_state)
+   Ce fichier contient uniquement la fonction main().
+   Il appelle les 6 fonctions definies dans jeu.c.
+
+   Structure du programme :
+     1. Initialiser le jeu
+     2. Charger les questions depuis questions.txt
+     3. Boucle principale : dessiner + gerer les evenements
+     4. Nettoyer et quitter
+
+   Compilation : make
+   Execution   : ./puzzlequest
+   ============================================================ */
+
+#include "jeu.h"
+
+int main(void)
 {
-    g->prevState = g->state;
-    g->state     = new_state;
+    /* Declarer la variable principale du jeu
+       (remplace toutes les variables globales) */
+    Jeu mon_jeu;
 
-    switch (new_state) {
-    case STATE_MAIN_MENU:    menu_main_enter(g);    break;
-    case STATE_OPTIONS:      menu_options_enter(g); break;
-    case STATE_SAVE_LOAD:
-    case STATE_SAVE_LOAD_CONFIRM:
-                             menu_saveload_enter(g); break;
-    case STATE_PLAYER_MENU:
-    case STATE_PLAYER_SELECT:
-                             menu_player_enter(g);  break;
-    case STATE_SCORES_INPUT:
-    case STATE_SCORES_DISPLAY:
-                             menu_scores_enter(g);  break;
-    case STATE_ENIGMA:       menu_enigma_enter(g);  break;
-    case STATE_QUIZ:         quiz_enter(g);         break;
-    case STATE_PUZZLE:       puzzle_enter(g);       break;
-    default: break;
-    }
-}
-
-/* ── Draw dispatcher ─────────────────────────────────────────── */
-static void draw_state(Game *g)
-{
-    switch (g->state) {
-    case STATE_MAIN_MENU:          menu_main_draw(g);    break;
-    case STATE_OPTIONS:            menu_options_draw(g); break;
-    case STATE_SAVE_LOAD:
-    case STATE_SAVE_LOAD_CONFIRM:  menu_saveload_draw(g); break;
-    case STATE_PLAYER_MENU:
-    case STATE_PLAYER_SELECT:      menu_player_draw(g);  break;
-    case STATE_SCORES_INPUT:
-    case STATE_SCORES_DISPLAY:     menu_scores_draw(g);  break;
-    case STATE_ENIGMA:             menu_enigma_draw(g);  break;
-    case STATE_QUIZ:               quiz_draw(g);         break;
-    case STATE_PUZZLE:             puzzle_draw(g);       break;
-    default: break;
-    }
-}
-
-/* ── Event dispatcher ────────────────────────────────────────── */
-static void handle_event(Game *g, SDL_Event *e)
-{
-    switch (g->state) {
-    case STATE_MAIN_MENU:          menu_main_event(g, e);    break;
-    case STATE_OPTIONS:            menu_options_event(g, e); break;
-    case STATE_SAVE_LOAD:
-    case STATE_SAVE_LOAD_CONFIRM:  menu_saveload_event(g, e); break;
-    case STATE_PLAYER_MENU:
-    case STATE_PLAYER_SELECT:      menu_player_event(g, e);  break;
-    case STATE_SCORES_INPUT:
-    case STATE_SCORES_DISPLAY:     menu_scores_event(g, e);  break;
-    case STATE_ENIGMA:             menu_enigma_event(g, e);  break;
-    case STATE_QUIZ:               quiz_event(g, e);         break;
-    case STATE_PUZZLE:             puzzle_event(g, e);       break;
-    default: break;
-    }
-}
-
-/* ── Main ────────────────────────────────────────────────────── */
-int main(int argc, char *argv[])
-{
-    (void)argc; (void)argv;
-
-    Game g;
-    if (!game_init(&g)) {
-        fprintf(stderr, "Initialization failed.\n");
+    /* --- Etape 1 : Initialiser SDL2 et charger les assets --- */
+    if (initialiser_jeu(&mon_jeu) == 0) {
+        /* Si l'initialisation echoue, on arrete tout */
+        printf("Echec de l'initialisation. Verifiez SDL2.\n");
         return 1;
     }
 
-    if (!assets_load(&g)) {
-        fprintf(stderr, "Warning: some assets could not be loaded.\n");
-        /* Continue anyway – missing textures show as black rects */
+    /* --- Etape 2 : Charger les questions depuis le fichier --- */
+    if (charger_questions(&mon_jeu, "questions.txt") == 0) {
+        /* Le jeu peut continuer sans questions (pas fatal) */
+        printf("Attention : aucune question chargee.\n");
     }
 
-    /* Enable text input for name entry */
+    /* --- Etape 3 : Activer la saisie de texte (pour le nom) --- */
     SDL_StartTextInput();
 
-    /* Enter initial state */
-    enter_state(&g, STATE_MAIN_MENU);
+    /* ===================================================
+       BOUCLE PRINCIPALE DU JEU
+       Tourne jusqu'a ce que l'etat passe a ETAT_QUITTER
+       =================================================== */
+    while (mon_jeu.etat != QUITTER) {
 
-    /* ── Game loop ── */
-    while (g.state != STATE_EXIT) {
-        /* Remember state before events (to detect transitions) */
-        GameState stateBeforeEvents = g.state;
+        /* Limiter a environ 60 images par seconde */
+        SDL_Delay(16);
 
-        /* Event handling */
-        SDL_Event e;
-        while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                g.state = STATE_EXIT;
-                break;
-            }
-            handle_event(&g, &e);
-        }
+        /* Afficher l'ecran courant */
+        dessiner_jeu(&mon_jeu);
 
-        /* Detect state transition → call enter function */
-        if (g.state != stateBeforeEvents && g.state != STATE_EXIT)
-            enter_state(&g, g.state);
-
-        /* Render */
-        SDL_SetRenderDrawColor(g.renderer, 0, 0, 0, 255);
-        SDL_RenderClear(g.renderer);
-
-        draw_state(&g);
-
-        SDL_RenderPresent(g.renderer);
-        SDL_Delay(16);  /* ~60 fps */
+        /* Lire et traiter les actions de l'utilisateur */
+        gerer_evenements(&mon_jeu);
     }
 
+    /* --- Etape 4 : Liberer la memoire et fermer SDL2 --- */
     SDL_StopTextInput();
-    game_cleanup(&g);
-    return 0;
+    nettoyer_jeu(&mon_jeu);
+
+    return 0; /* programme termine sans erreur */
 }
